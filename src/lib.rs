@@ -1,16 +1,21 @@
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
-const MAP_WIDTH:u32 = 20;
-const MAP_HEIGHT:u32 = 11;
+pub const MAP_WIDTH:u32 = 20;
+pub const MAP_HEIGHT:u32 = 11;
 //const WORLD_START:u8 = 0;
 //const WORLD_END:u8 = 8;
-const TILE_WIDTH:u32 = 32;
-const TILE_HEIGHT:u32 = 32;
-const TILESET_WIDTH:u32 = 4*TILE_WIDTH;
-const TILESET_HEIGHT:u32 = TILE_HEIGHT;
-const CANVAS_WIDTH:u32 = 640;
-const CANVAS_HEIGHT:u32 = 360;
+pub const TILE_WIDTH:u32 = 32;
+pub const TILE_HEIGHT:u32 = 32;
+pub const TILESET_WIDTH:u32 = 4*TILE_WIDTH;
+pub const TILESET_HEIGHT:u32 = TILE_HEIGHT;
+pub const CANVAS_WIDTH:u32 = 640;
+pub const CANVAS_HEIGHT:u32 = 360;
+
+const KEY_W:u8 = 1;
+const KEY_A:u8 = 2;
+const KEY_S:u8 = 4;
+const KEY_D:u8 = 8;
 
 #[wasm_bindgen]
 #[repr(u8)]
@@ -26,6 +31,7 @@ pub enum Tile {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
+	Neutral,
 	Left,
 	LeftDown,
 	Down,
@@ -52,6 +58,7 @@ pub struct World {
 	player: Player,
 	pixel_data: Vec<u8>,
 	tiles_data: Vec<u8>,
+	keymap: u8,
 }
 
 #[wasm_bindgen]
@@ -74,6 +81,14 @@ impl World {
 
 	pub fn tiles_data_len(&self) -> usize {
 		self.tiles_data.len()
+	}
+
+	pub fn keydown(&mut self, keymap: u8) {
+		self.keymap |= keymap;
+	}
+
+	pub fn keyup(&mut self, keymap: u8) {
+		self.keymap &= !keymap;
 	}
 
 	pub fn new() -> World {
@@ -102,36 +117,50 @@ impl World {
 			},
 			pixel_data: vec![0; (CANVAS_WIDTH * CANVAS_HEIGHT * 4) as usize],
 			tiles_data: vec![0; (TILESET_WIDTH * TILESET_HEIGHT * 4) as usize],
+			keymap: 0,
 		}
 	}
 
 	pub fn tick(&mut self) {
+		if self.keymap & KEY_W == KEY_W {
+			self.player.direction = Direction::Up;
+		} else if self.keymap & KEY_A == KEY_A {
+			self.player.direction = Direction::Left;
+		} else if self.keymap & KEY_S == KEY_S {
+			self.player.direction = Direction::Down;
+		} else if self.keymap & KEY_D == KEY_D {
+			self.player.direction = Direction::Right;
+		} else {
+			self.player.direction = Direction::Neutral;
+		}
+		
 		match self.player.direction {
+			Direction::Neutral => (),
 			Direction::Left => {
 				self.player.x -= 2;
-				if self.player.x < TILE_WIDTH + 10 {
-					self.player.direction = Direction::Up;
+				if self.player.x < TILE_WIDTH {
+					self.player.x = TILE_WIDTH;
 				}
 			},
 			Direction::LeftDown => (),
 			Direction::Down => {
 				self.player.y += 2;
-				if self.player.y > (MAP_HEIGHT - 2) * TILE_HEIGHT - 10 {
-					self.player.direction = Direction::Left;
+				if self.player.y > (MAP_HEIGHT - 2) * TILE_HEIGHT {
+					self.player.y = (MAP_HEIGHT - 2) * TILE_HEIGHT;
 				}
 			},
 			Direction::DownRight => (),
 			Direction::Right => {
 				self.player.x += 2;
-				if self.player.x > (MAP_WIDTH - 2) * TILE_WIDTH - 10 {
-					self.player.direction = Direction::Down;
+				if self.player.x > (MAP_WIDTH - 2) * TILE_WIDTH {
+					self.player.x = (MAP_WIDTH - 2) * TILE_WIDTH;
 				}
 			},
 			Direction::RightUp => (),
 			Direction::Up => {
 				self.player.y -= 2;
-				if self.player.y < TILE_HEIGHT + 10 {
-					self.player.direction = Direction::Right;
+				if self.player.y < TILE_HEIGHT {
+					self.player.y = TILE_HEIGHT;
 				}
 			},
 		};
@@ -198,5 +227,3 @@ fn draw_tile(pixel_data: &mut[u8], tiles_data: &[u8], x: u32, y: u32, x_offset: 
 		}
 	}
 }
-
-// Event handlers
